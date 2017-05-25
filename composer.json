@@ -1,0 +1,30 @@
+{
+    "name": "bynqio/encryptor",
+    "description": "Resource encryption",
+    "keywords": [
+      "encryption",
+      "file",
+      "resources"
+    ],
+    "type": "package",
+    "license": "BSD-2-Clause",
+    "authors": [
+        {
+            "name": "Yorick de Wid",
+            "email": "y.dewid@calculatietool.com"
+        }
+    ],
+    "require" : {
+        "php": ">=5.6.4",
+        "ext-curl": "*",
+        "ext-openssl": "*"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^3.7 || ^4.8 || ^5.4"
+    },
+    "autoload": {
+        "psr-0": {
+            "BynqIO": "src/"
+        }
+    }
+}
