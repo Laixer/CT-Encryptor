@@ -15,7 +15,6 @@
 
 namespace BynqIO\Encryptor;
 
-use Exception;
 use Illuminate\Support\ServiceProvider;
 
 class EncryptorServiceProvider extends ServiceProvider

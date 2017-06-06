@@ -15,25 +15,24 @@
 
 namespace BynqIO\Encryptor;
 
+use finfo;
 use RuntimeException;
 use Ramsey\Uuid\Uuid;
-// use Illuminate\Http\File;
-use InvalidArgumentException;
-// use Illuminate\Http\UploadedFile;
-use League\Flysystem\AdapterInterface;
 use League\Flysystem\FilesystemInterface;
-// use League\Flysystem\AwsS3v3\AwsS3Adapter;
-use League\Flysystem\FileNotFoundException;
-// use League\Flysystem\Adapter\Local as LocalAdapter;
 use Illuminate\Filesystem\FilesystemAdapter;
+use BynqIO\Encryptor\Contracts\Encrypter;
+use BynqIO\Encryptor\Contracts\Filesystem as FilesystemContract;
 use BynqIO\Encryptor\Exception\NotSupportedException;
-// use Illuminate\Contracts\Encryption\Encrypter;
-// use Illuminate\Contracts\Filesystem\Cloud as CloudFilesystemContract;
-// use Illuminate\Contracts\Filesystem\Filesystem as FilesystemContract;
-use Illuminate\Contracts\Filesystem\FileNotFoundException as ContractFileNotFoundException;
 
-class StorageAdapter //implements FilesystemContract, CloudFilesystemContract
+class StorageAdapter implements FilesystemContract
 {
+    /**
+     * File info provider.
+     *
+     * @var \finfo
+     */
+    protected $finfo;
+
     /**
      * The Flysystem filesystem implementation.
      *
@@ -54,10 +53,22 @@ class StorageAdapter //implements FilesystemContract, CloudFilesystemContract
      * @param  \Illuminate\Filesystem\FilesystemAdapter  $driver
      * @return void
      */
-    public function __construct(FilesystemAdapter $driver, $encrypter)
+    public function __construct(FilesystemAdapter $driver, Encrypter $encrypter)
     {
+        $this->finfo = new finfo(FILEINFO_MIME_TYPE);
         $this->driver = $driver;
         $this->encrypter = $encrypter;
+    }
+
+    /**
+     * Generate unique name for file.
+     *
+     * @param  string  $path
+     * @return string
+     */
+    private function generateName($path, $ext)
+    {
+        return $path.'/'.Uuid::uuid4()->toString().'.'.$ext;
     }
 
     /**
@@ -68,19 +79,15 @@ class StorageAdapter //implements FilesystemContract, CloudFilesystemContract
      *
      * @throws \Illuminate\Contracts\Filesystem\FileNotFoundException
      */
-    public function get($path, $key)
+    public function get($path, $key = null)
     {
-        try {
-            $object = json_decode($this->driver->read($path));
-            $contents = base64_decode($object->contents);
+        $object = json_decode($this->driver->read($path));
+        $contents = base64_decode($object->contents);
 
-            if ($object->encrypted) {
-                return $this->encrypter->decryptString($key, $contents);
-            } else {
-                return $contents;
-            }
-        } catch (FileNotFoundException $e) {
-            throw new ContractFileNotFoundException($path, $e->getCode(), $e);
+        if ($object->encrypted) {
+            return $this->encrypter->decryptString($key, $contents);
+        } else {
+            return $contents;
         }
     }
 
@@ -88,7 +95,8 @@ class StorageAdapter //implements FilesystemContract, CloudFilesystemContract
      * Write the contents of a file.
      *
      * @param  string  $path
-     * @param  string|resource  $contents
+     * @param  string  $contents
+     * @param  string  $key
      * @param  array  $options
      * @return bool
      */
@@ -99,7 +107,8 @@ class StorageAdapter //implements FilesystemContract, CloudFilesystemContract
         }
 
         $size = strlen($contents);
-        $mime = 'application/pdf';//TODO
+        $mime = $this->finfo->buffer($contents);
+
         $encrypted = false;
         if (!is_null($key)) {
             $contents = $this->encrypter->encryptString($key, $contents);
@@ -120,11 +129,11 @@ class StorageAdapter //implements FilesystemContract, CloudFilesystemContract
      * @param  array  $options
      * @return bool
      */
-    public function putAuto($path, $contents, $key = null, $options = [])
+    public function putAuto($path, $ext, $contents, $key = null, $options = [])
     {
-        $path = $path.'/'.Uuid::uuid4()->toString();
-        $result = $this->put($path, $contents, $key, $options = []);
-        return $result ? $path : false;
+        $name = $this->generateName($path, $ext);
+        $result = $this->put($name, $contents, $key, $options);
+        return $result ? $name : false;
     }
 
     /**
@@ -135,9 +144,9 @@ class StorageAdapter //implements FilesystemContract, CloudFilesystemContract
      * @param  array  $options
      * @return string|false
      */
-    public function putFile($path, $file, $options = [])
+    public function putFile($path, $file, $key = null, $options = [])
     {
-        return $this->putFileAs($path, $file, $file->hashName(), $options);
+        return $this->putFileAs($path, $file, $file->hashName(), $key, $options);
     }
 
     /**
@@ -149,16 +158,14 @@ class StorageAdapter //implements FilesystemContract, CloudFilesystemContract
      * @param  array  $options
      * @return string|false
      */
-    public function putFileAs($path, $file, $name, $options = [])
+    public function putFileAs($path, $file, $name, $key, $options = [])
     {
         $stream = fopen($file->getRealPath(), 'r+');
 
         // Next, we will format the path of the file and store the file using a stream since
         // they provide better performance than alternatives. Once we write the file this
         // stream will get closed automatically by us so the developer doesn't have to.
-        $result = $this->put(
-            $path = trim($path.'/'.$name, '/'), $stream, $options
-        );
+        $result = $this->put($path = trim($path.'/'.$name, '/'), $stream, $key, $options);
 
         if (is_resource($stream)) {
             fclose($stream);
@@ -218,9 +225,9 @@ class StorageAdapter //implements FilesystemContract, CloudFilesystemContract
     }
 
     /**
-     * Get the Flysystem driver.
+     * Get the filesystem driver.
      *
-     * @return \League\Flysystem\FilesystemInterface
+     * @return \Illuminate\Filesystem\FilesystemAdapter
      */
     public function getDriver()
     {

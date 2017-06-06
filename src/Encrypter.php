@@ -18,9 +18,9 @@ namespace BynqIO\Encryptor;
 use RuntimeException;
 use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Contracts\Encryption\EncryptException;
-use Illuminate\Contracts\Encryption\Encrypter as EncrypterContract;
+use BynqIO\Encryptor\Contracts\Encrypter as EncrypterContract;
 
-class Encrypter //implements EncrypterContract
+class Encrypter implements EncrypterContract
 {
     /**
      * The algorithm used for encryption.
@@ -67,6 +67,7 @@ class Encrypter //implements EncrypterContract
     /**
      * Encrypt the given value.
      *
+     * @param  string $key
      * @param  mixed  $value
      * @param  bool  $serialize
      * @return string
@@ -105,6 +106,7 @@ class Encrypter //implements EncrypterContract
     /**
      * Encrypt a string without serialization.
      *
+     * @param  string $key
      * @param  string  $value
      * @return string
      */
@@ -116,6 +118,7 @@ class Encrypter //implements EncrypterContract
     /**
      * Decrypt the given value.
      *
+     * @param  string $key
      * @param  mixed  $payload
      * @param  bool  $unserialize
      * @return string
@@ -143,6 +146,7 @@ class Encrypter //implements EncrypterContract
     /**
      * Decrypt the given string without unserialization.
      *
+     * @param  string $key
      * @param  string  $payload
      * @return string
      */
@@ -154,6 +158,7 @@ class Encrypter //implements EncrypterContract
     /**
      * Create a MAC for the given value.
      *
+     * @param  string $key
      * @param  string  $iv
      * @param  mixed  $value
      * @return string
@@ -166,6 +171,7 @@ class Encrypter //implements EncrypterContract
     /**
      * Get the JSON array from the given payload.
      *
+     * @param  string $key
      * @param  string  $payload
      * @return array
      *
@@ -203,6 +209,7 @@ class Encrypter //implements EncrypterContract
     /**
      * Determine if the MAC for the given payload is valid.
      *
+     * @param  string $key
      * @param  array  $payload
      * @return bool
      */
@@ -216,6 +223,7 @@ class Encrypter //implements EncrypterContract
     /**
      * Calculate the hash of the given payload.
      *
+     * @param  string $key
      * @param  array  $payload
      * @param  string  $bytes
      * @return string
