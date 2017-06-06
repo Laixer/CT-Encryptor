@@ -16,7 +16,6 @@
     ],
     "require" : {
         "php": ">=5.6.4",
-        "ext-curl": "*",
         "ext-openssl": "*",
         "ramsey/uuid": "~3.0"
     },
