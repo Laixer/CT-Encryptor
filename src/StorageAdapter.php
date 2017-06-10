@@ -106,8 +106,12 @@ class StorageAdapter implements FilesystemContract
             $options = ['visibility' => $options];
         }
 
-        $size = strlen($contents);
+        if (is_resource($contents)) {
+            $contents = stream_get_contents($contents);
+        }
+
         $mime = $this->finfo->buffer($contents);
+        $size = strlen($contents);
 
         $encrypted = false;
         if (!is_null($key)) {
@@ -172,6 +176,18 @@ class StorageAdapter implements FilesystemContract
         }
 
         return $result ? $path : false;
+    }
+
+    /**
+     * Get the contents as base64 string.
+     *
+     * @param  string  $path
+     * @return string
+     */
+    public function base64($path)
+    {
+        $object = json_decode($this->driver->read($path));
+        return 'data:' . $object->mime . ';base64,' . $object->contents;
     }
 
     /**
